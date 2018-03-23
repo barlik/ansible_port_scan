@@ -1,0 +1,23 @@
+[testvm]
+10.25.81.30
+
+[bastion]
+10.25.81.9
+
+[internal_elb_master:children]
+master
+
+[elb_master:children]
+master
+
+[master]
+
+[etcd]
+
+[nodes]
+
+[infra_nodes]
+
+[router]
+
+# [gluster]

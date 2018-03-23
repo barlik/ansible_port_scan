@@ -1,0 +1,27 @@
+---
+- hosts: localhost
+  connection: local
+  vars:
+    report_dir: /tmp/report
+  tasks:
+    - include_role:
+        name: port_scan
+      vars:
+        group: "{{ target.group }}"
+        port: "{{ target.port }}"
+        proto: "{{ target.proto | default('tcp') }}"
+        test_from: "{{ target.test_from }}"
+      with_list: "{{ firewall_rules }}"
+      loop_control:
+        loop_var: target
+
+    - name: Create report directory
+      file:
+        path: "{{ report_dir }}"
+        state: directory
+
+#    - debug: var=port_scan_result
+    - name: Generate the report
+      template:
+        src: port_report.j2
+        dest: "{{ report_dir }}/report.txt"
