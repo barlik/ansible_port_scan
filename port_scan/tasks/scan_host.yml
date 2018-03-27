@@ -50,9 +50,10 @@
             "group": group,
             "port": port,
             "proto": proto,
-            "state": "HELO" in (result.stdout | d()),
+            "state": "HELO" in result.stdout,
             "src": src,
             "tested_from": test_from
           }]
         }}
+    port_scan_failed: "{{ port_scan_failed | d(False) or 'HELO' not in result.stdout }}"
   delegate_to: localhost

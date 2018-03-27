@@ -22,3 +22,8 @@
   template:
     src: port_report.j2
     dest: "{{ report_file }}"
+
+- debug: msg="Generated report in {{ report_file }}"
+- fail:
+    msg: "Port scan failed"
+  when: port_scan_failed
