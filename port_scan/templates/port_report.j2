@@ -1,0 +1,5 @@
+Destination, Source, Port, Protocol, State
+
+{% for item in port_scan_result %}
+{{ item.dest }} ({{ item.group }}), {{ item.src }} ({{ item.tested_from }}), {{ item.port }}, {{ item.proto }}, {{ item.state | ternary("OK", "FAIL") }}
+{% endfor %}

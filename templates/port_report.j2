@@ -1,7 +1,0 @@
-{% for item in port_scan_result %}
----
-Host: {{ item.host }}
-Port: {{ item.port }} / {{ item.proto }}
-State: {{ item.state | ternary("OK", "FAIL") }}
-Tested from: {{ item.tested_from }}
-{% endfor %}

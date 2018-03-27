@@ -1,54 +1,24 @@
 ---
-# - debug: var=item
-#   with_items: "{{ groups[test_from] }}"
+- assert: { that: report_file is defined }
 
-- name: Listening on {{ group }} ({{ proto }} / {{ port }})
-  command: >
-    ncat
-    --listen
-    {{ "--udp --keep-open" if proto == "udp" else "" }}
-    --source-port {{ port }}
-    --sh-exec cat
-    --idle-timeout 5m
-  delegate_to: "{{ host }}"
-  with_items: "{{ groups[group] }}"
+- include: scan.yml
+  vars:
+    group: "{{ target.group }}"
+    port: "{{ target.port }}"
+    proto: "{{ target.proto | default('tcp') }}"
+    test_from: "{{ target.test_from }}"
+  with_list: "{{ firewall_rules }}"
   loop_control:
-    loop_var: host
-  become: true
-  async: -1
-  poll: 0
+    loop_var: target
 
-- name: Testing the connection to {{ group }} ({{ proto }} / {{ port }})
-  # sleep command is needed otherwise ncat will close UDP connections
-  shell: >
-    (echo HELO; sleep 0.5) | ncat
-    --wait 3s
-    {{ "--udp" if proto == "udp" else "" }}
-    {{ item[0] }} {{ port }}
-  delegate_to: "{{ item[1] }}"
-  with_nested:
-    - "{{ groups[group] }}"
-    - "{{ groups[test_from] }}"
-  when: item[0] != item[1] # skip connections to itself
-  register: result
-  failed_when: false
+- name: Create report directory
+  file:
+    path: "{{ report_file | dirname }}"
+    state: directory
 
-# - debug: var=result
+- debug: var=port_scan_result verbosity=2
 
-- name: Save port scan result
-  set_fact:
-    port_scan_result: >
-        {{ port_scan_result | default([]) + [
-          {
-            "host": item.item[0] + " (" + group + ")",
-            "port": port,
-            "proto": proto,
-            "state": "HELO" in (item.stdout | d()),
-            "tested_from": item.item[1] + " (" + test_from + ")"
-          }]
-        }}
-  with_items: "{{ result.results }}"
-  when: not item | skipped
-  loop_control:
-    label: "{{ item.item[1] }}"
-  delegate_to: localhost
+- name: Generate report
+  template:
+    src: port_report.j2
+    dest: "{{ report_file }}"

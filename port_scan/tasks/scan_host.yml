@@ -1,0 +1,58 @@
+---
+- name: "Listening on {{ dest }} ({{ group }}) port: {{ proto }} / {{ port }}"
+  command: >
+    ncat
+    --listen
+    {{ "--udp" if proto == "udp" else "" }}
+    --source-port {{ port }}
+    --sh-exec 'sed -ue "/Q/q"'
+    --idle-timeout 10s
+  delegate_to: "{{ dest }}"
+  async: 10
+  poll: 0
+  register: ncat_server
+
+- name: Check whether ncat command hasn't silently failed
+  async_status: jid={{ ncat_server.ansible_job_id }}
+  delegate_to: "{{ dest }}"
+  register: job_result
+
+- debug: var=ncat_server verbosity=1
+
+- name: "Testing the connection from {{ src }} ({{ test_from }}) to {{ dest }} ({{ group }}) port: {{ proto }} / {{ port }}"
+  # sleep command is needed otherwise ncat will close UDP connections
+  shell: >
+    (echo HELO; echo Q; sleep 0.5) | ncat
+    --wait 3s
+    {{ "--udp" if proto == "udp" else "" }}
+    {{ dest }} {{ port }}
+  delegate_to: "{{ src }}"
+  register: result
+  failed_when: false
+
+- name: Wait for server to exit
+  async_status: jid={{ ncat_server.ansible_job_id }}
+  delegate_to: "{{ dest }}"
+  register: job_result
+  until: job_result.finished
+  failed_when: False
+  retries: 10
+
+- debug: var=ncat_server verbosity=1
+- debug: var=result verbosity=1
+
+- name: Save port scan result
+  set_fact:
+    port_scan_result: >
+        {{ port_scan_result | default([]) + [
+          {
+            "dest": dest,
+            "group": group,
+            "port": port,
+            "proto": proto,
+            "state": "HELO" in (result.stdout | d()),
+            "src": src,
+            "tested_from": test_from
+          }]
+        }}
+  delegate_to: localhost

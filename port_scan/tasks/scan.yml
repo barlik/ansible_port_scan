@@ -1,0 +1,7 @@
+---
+- include: scan_host.yml dest="{{ item[0] }}" src="{{ item[1] }}"
+  with_nested:
+    - "{{ groups[group] }}"
+    - "{{ groups[test_from] }}"
+  when: item[1] != item[0] # skip connections to itself
+  become: true # for privileged ports
